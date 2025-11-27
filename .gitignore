@@ -1,0 +1,25 @@
+# 二进制文件
+lanlink
+lanlink.exe
+*.exe
+
+# 配置文件
+config.json
+
+# 日志文件
+*.log
+
+# Go
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
