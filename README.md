@@ -11,7 +11,25 @@ LanLink 是一款无中心节点、跨平台的局域网工具，基于 UDP 组�
 - 🛡️ **安全可靠** - 仅管理标记区域，不影响用户自定义配置
 - 📊 **可观测** - 详细日志记录，运行状态一目了然
 
-## 📦 快速开始
+## 📦 命令行工具
+
+LanLink 提供强大的命令行工具，方便监控和管理。
+
+```bash
+lanlink              # 启动服务（默认）
+lanlink status       # 查看运行状态
+lanlink list         # 列出所有节点
+lanlink logs -f      # 实时查看日志
+lanlink ping <domain> # 测试连接
+lanlink version      # 显示版本
+lanlink help         # 帮助信息
+```
+
+详细使用说明请查看：[CLI使用指南](docs/CLI使用指南.md)
+
+---
+
+## 🚀 快速开始
 
 ### 1. 下载或编译
 

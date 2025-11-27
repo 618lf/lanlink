@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/618lf/lanlink/cli"
 	"github.com/618lf/lanlink/config"
 	"github.com/618lf/lanlink/hosts"
 	"github.com/618lf/lanlink/logger"
@@ -21,6 +22,62 @@ const (
 )
 
 func main() {
+	// 命令行路由
+	if len(os.Args) >= 2 {
+		command := os.Args[1]
+		args := os.Args[2:]
+
+		switch command {
+		case "status":
+			if err := cli.ShowStatus(); err != nil {
+				os.Exit(1)
+			}
+			return
+		case "list", "ls":
+			if err := cli.ListNodes(args); err != nil {
+				os.Exit(1)
+			}
+			return
+		case "logs":
+			if err := cli.ShowLogs(args); err != nil {
+				os.Exit(1)
+			}
+			return
+		case "ping":
+			if err := cli.PingNode(args); err != nil {
+				os.Exit(1)
+			}
+			return
+		case "version", "-v", "--version":
+			cli.ShowVersion()
+			return
+		case "help", "-h", "--help":
+			cli.ShowHelp()
+			return
+		case "install":
+			if err := cli.Install(); err != nil {
+				os.Exit(1)
+			}
+			return
+		case "uninstall":
+			if err := cli.Uninstall(); err != nil {
+				os.Exit(1)
+			}
+			return
+		case "start":
+			// 继续执行服务启动
+		default:
+			fmt.Printf("未知命令: %s\n", command)
+			cli.ShowHelp()
+			os.Exit(1)
+		}
+	}
+
+	// 默认：启动服务
+	runService()
+}
+
+func runService() {
 	fmt.Println("LanLink - 局域网域名自动映射工具")
 	fmt.Println("Version: 1.0.0")
 	fmt.Println()
@@ -244,4 +301,3 @@ func extractMACShort(deviceID string) string {
 	}
 	return mac
 }
-
