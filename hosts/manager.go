@@ -227,4 +227,3 @@ func getHostsPath() string {
 		return "/etc/hosts"
 	}
 }
-

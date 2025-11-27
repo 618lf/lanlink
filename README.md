@@ -77,8 +77,8 @@ curl http://webserver.local:8080
   "domainSuffix": "local",        // 域名后缀
   "multicastAddr": "239.255.0.1", // 组播地址
   "multicastPort": 9527,          // 组播端口
-  "heartbeatInterval": 10,        // 心跳间隔（秒）
-  "offlineTimeout": 30,           // 离线超时（秒）
+  "heartbeatIntervalSec": 10,     // 心跳间隔（秒）
+  "offlineTimeoutSec": 30,        // 离线超时（秒）
   "logLevel": "info"              // 日志级别：debug/info/warn/error
 }
 ```

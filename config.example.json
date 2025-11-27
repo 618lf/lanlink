@@ -3,8 +3,7 @@
   "domainSuffix": "local",
   "multicastAddr": "239.255.0.1",
   "multicastPort": 9527,
-  "heartbeatInterval": 10,
-  "offlineTimeout": 30,
+  "heartbeatIntervalSec": 10,
+  "offlineTimeoutSec": 30,
   "logLevel": "info"
 }
-

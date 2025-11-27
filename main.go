@@ -79,7 +79,7 @@ func main() {
 	logger.Info("本机信息: DeviceID=%s, IP=%s, Domain=%s", deviceID, localIP, domain)
 
 	// 6. 创建节点管理器
-	nodeManager := node.NewManager(time.Duration(cfg.OfflineTimeout) * time.Second)
+	nodeManager := node.NewManager(time.Duration(cfg.OfflineTimeoutSec) * time.Second)
 
 	// 添加本机节点
 	nodeManager.AddOrUpdate(deviceID, domain, localIP, cfg.DeviceName)
@@ -144,7 +144,7 @@ func main() {
 	sendHeartbeat(client, domain, localIP, deviceID, cfg.DeviceName)
 
 	// 9. 启动定时任务
-	heartbeatTicker := time.NewTicker(time.Duration(cfg.HeartbeatInterval) * time.Second)
+	heartbeatTicker := time.NewTicker(time.Duration(cfg.HeartbeatIntervalSec) * time.Second)
 	offlineCheckTicker := time.NewTicker(5 * time.Second)
 	defer heartbeatTicker.Stop()
 	defer offlineCheckTicker.Stop()

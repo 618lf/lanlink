@@ -7,26 +7,26 @@ import (
 
 // Config 应用配置
 type Config struct {
-	DeviceName        string `json:"deviceName"`        // 设备名，空则自动获取主机名
-	DomainSuffix      string `json:"domainSuffix"`      // 域名后缀
-	MulticastAddr     string `json:"multicastAddr"`     // 组播地址
-	MulticastPort     int    `json:"multicastPort"`     // 组播端口
-	HeartbeatInterval int    `json:"heartbeatInterval"` // 心跳间隔（秒）
-	OfflineTimeout    int    `json:"offlineTimeout"`    // 离线超时（秒）
-	LogLevel          string `json:"logLevel"`          // 日志级别
+	DeviceName           string `json:"deviceName"`           // 设备名，空则自动获取主机名
+	DomainSuffix         string `json:"domainSuffix"`         // 域名后缀
+	MulticastAddr        string `json:"multicastAddr"`        // 组播地址
+	MulticastPort        int    `json:"multicastPort"`        // 组播端口
+	HeartbeatIntervalSec int    `json:"heartbeatIntervalSec"` // 心跳间隔（秒）
+	OfflineTimeoutSec    int    `json:"offlineTimeoutSec"`    // 离线超时（秒）
+	LogLevel             string `json:"logLevel"`             // 日志级别
 }
 
 // Default 默认配置
 func Default() *Config {
 	hostname, _ := os.Hostname()
 	return &Config{
-		DeviceName:        hostname,
-		DomainSuffix:      "local",
-		MulticastAddr:     "239.255.0.1",
-		MulticastPort:     9527,
-		HeartbeatInterval: 10,
-		OfflineTimeout:    30,
-		LogLevel:          "info",
+		DeviceName:           hostname,
+		DomainSuffix:         "local",
+		MulticastAddr:        "239.255.0.1",
+		MulticastPort:        9527,
+		HeartbeatIntervalSec: 10,
+		OfflineTimeoutSec:    30,
+		LogLevel:             "info",
 	}
 }
 
