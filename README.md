@@ -55,10 +55,14 @@ go build -o lanlink
 # Windows
 go build -o lanlink.exe
 
-# 跨平台编译
-GOOS=linux GOARCH=amd64 go build -o lanlink-linux
-GOOS=darwin GOARCH=arm64 go build -o lanlink-mac
-GOOS=windows GOARCH=amd64 go build -o lanlink.exe
+# 一键编译所有平台（Windows）
+.\build-all.ps1
+
+# 或手动跨平台编译
+GOOS=linux GOARCH=amd64 go build -o lanlink-linux-amd64
+GOOS=darwin GOARCH=amd64 go build -o lanlink-mac-amd64      # Mac Intel
+GOOS=darwin GOARCH=arm64 go build -o lanlink-mac-arm64      # Mac M1/M2/M3
+GOOS=windows GOARCH=amd64 go build -o lanlink-windows.exe
 ```
 
 ### 2. 运行

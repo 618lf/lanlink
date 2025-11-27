@@ -2,9 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"runtime"
-	"syscall"
-	"unsafe"
 )
 
 // ANSI 颜色代码
@@ -23,16 +20,9 @@ var colorEnabled = true
 
 // InitColors 初始化颜色支持
 func InitColors() {
-	if runtime.GOOS == "windows" {
-		// 启用 Windows 10+ 的 ANSI 颜色支持
-		kernel32 := syscall.NewLazyDLL("kernel32.dll")
-		setConsoleMode := kernel32.NewProc("SetConsoleMode")
-		var mode uint32
-		handle := syscall.Handle(syscall.Stdout)
-		syscall.Syscall(kernel32.NewProc("GetConsoleMode").Addr(), 2, uintptr(handle), uintptr(unsafe.Pointer(&mode)), 0)
-		mode |= 0x0004 // ENABLE_VIRTUAL_TERMINAL_PROCESSING
-		setConsoleMode.Call(uintptr(handle), uintptr(mode))
-	}
+	// Windows 10+ 默认支持 ANSI 颜色，无需特殊处理
+	// Linux/Mac 原生支持 ANSI 颜色
+	colorEnabled = true
 }
 
 func init() {
@@ -102,4 +92,3 @@ func StatusIndicator(isOK bool) string {
 	}
 	return color(ColorRed, "✗")
 }
-
