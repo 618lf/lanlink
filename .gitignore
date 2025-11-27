@@ -23,3 +23,5 @@ vendor/
 .DS_Store
 Thumbs.db
 
+# build
+dist/

@@ -28,7 +28,10 @@ func RunInteractive() {
 
 		// 获取输入的命令
 		input := strings.TrimSpace(scanner.Text())
-
+		
+		// Remove UTF-8 BOM if present
+		input = strings.TrimPrefix(input, "\ufeff")
+		
 		// 跳过空行
 		if input == "" {
 			continue
@@ -57,26 +60,25 @@ func RunInteractive() {
 	printGoodbye()
 }
 
-// printWelcome 打印欢迎信息
+// printWelcome prints welcome message
 func printWelcome() {
 	clearScreen()
-	fmt.Print(color(ColorCyan, "\n╔════════════════════════════════════════════════════════╗\n"))
-	fmt.Print(color(ColorCyan, "║          LanLink Interactive Shell                    ║\n"))
-	fmt.Print(color(ColorCyan, "╚════════════════════════════════════════════════════════╝\n"))
-	fmt.Printf("  版本: %s\n", "1.0.0")
-	fmt.Printf("  构建: %s\n\n", "latest")
-	fmt.Print(color(ColorYellow+ColorBold, "💡 提示：\n"))
-	fmt.Println("  - 输入命令直接执行，无需前缀 'lanlink'")
-	fmt.Println("  - 输入 'help' 查看所有命令")
-	fmt.Println("  - 输入 'clear' 清屏")
-	fmt.Println("  - 输入 'exit' 或 'quit' 退出")
+	fmt.Println("\n========================================================")
+	fmt.Println("          LanLink Interactive Shell")
+	fmt.Println("========================================================")
+	fmt.Printf("  Version: %s\n", "1.0.0")
+	fmt.Printf("  Build: %s\n\n", "latest")
+	fmt.Println("Tips:")
+	fmt.Println("  - Enter commands directly without 'lanlink' prefix")
+	fmt.Println("  - Type 'help' to see all commands")
+	fmt.Println("  - Type 'clear' to clear screen")
+	fmt.Println("  - Type 'exit' or 'quit' to exit")
 	fmt.Println()
 }
 
-// printPrompt 打印命令提示符
+// printPrompt prints command prompt
 func printPrompt() {
-	fmt.Print(color(ColorGreen, "lanlink"))
-	fmt.Print(color(ColorCyan, "> "))
+	fmt.Print("lanlink> ")
 }
 
 // executeCommand 执行命令
@@ -112,9 +114,9 @@ func executeCommand(cmd string, args []string) bool {
 
 	case "ping":
 		if len(args) == 0 {
-			Error("请指定要 ping 的域名")
-			fmt.Println("   用法: ping <domain>")
-			fmt.Println("   示例: ping server1.local")
+			fmt.Println("[ERROR] Please specify domain to ping")
+			fmt.Println("   Usage: ping <domain>")
+			fmt.Println("   Example: ping server1.local")
 		} else {
 			PingNode(args)
 		}
@@ -125,70 +127,70 @@ func executeCommand(cmd string, args []string) bool {
 		return false
 
 	case "install":
-		Warn("install 命令需要管理员权限，建议退出交互模式后执行：")
+		fmt.Println("[WARN] install requires admin privileges, please exit and run:")
 		if runtime.GOOS == "windows" {
-			fmt.Println("   以管理员身份运行: lanlink install")
+			fmt.Println("   Run as administrator: lanlink install")
 		} else {
 			fmt.Println("   sudo lanlink install")
 		}
 		return false
 
 	case "uninstall":
-		Warn("uninstall 命令需要管理员权限，建议退出交互模式后执行：")
+		fmt.Println("[WARN] uninstall requires admin privileges, please exit and run:")
 		if runtime.GOOS == "windows" {
-			fmt.Println("   以管理员身份运行: lanlink uninstall")
+			fmt.Println("   Run as administrator: lanlink uninstall")
 		} else {
 			fmt.Println("   sudo lanlink uninstall")
 		}
 		return false
 
 	case "service", "svc":
-		Warn("service 命令需要管理员权限，建议退出交互模式后执行：")
+		fmt.Println("[WARN] service commands require admin privileges, please exit and run:")
 		if runtime.GOOS == "windows" {
-			fmt.Println("   以管理员身份运行: lanlink service <subcommand>")
+			fmt.Println("   Run as administrator: lanlink service <subcommand>")
 		} else {
 			fmt.Println("   sudo lanlink service <subcommand>")
 		}
-		fmt.Println("\n可用子命令:")
-		fmt.Println("   install   - 安装服务")
-		fmt.Println("   uninstall - 卸载服务")
-		fmt.Println("   start     - 启动服务")
-		fmt.Println("   stop      - 停止服务")
-		fmt.Println("   status    - 查看服务状态")
+		fmt.Println("\nAvailable subcommands:")
+		fmt.Println("   install   - Install service")
+		fmt.Println("   uninstall - Uninstall service")
+		fmt.Println("   start     - Start service")
+		fmt.Println("   stop      - Stop service")
+		fmt.Println("   status    - Check service status")
 		return false
 
 	case "refresh", "reload":
-		Info("🔄 刷新配置...")
-		fmt.Println("提示: 当前版本需要重启 LanLink 服务来重新加载配置")
+		fmt.Println("[INFO] Refreshing configuration...")
+		fmt.Println("Note: Current version needs to restart LanLink service to reload config")
 		return false
 
 	default:
-		Error(fmt.Sprintf("未知命令: %s", cmd))
-		fmt.Println("   输入 'help' 查看所有可用命令")
+		fmt.Printf("[ERROR] Unknown command: %s\n", cmd)
+		fmt.Println("   Type 'help' to see all available commands")
 		return false
 	}
 }
 
-// printInteractiveHelp 打印交互式帮助
+// printInteractiveHelp prints interactive help
 func printInteractiveHelp() {
-	fmt.Print(color(ColorCyan+ColorBold, "📚 可用命令：\n\n"))
+	fmt.Println("\nAvailable Commands:")
 
 	commands := []struct {
 		name    string
 		aliases string
 		desc    string
 	}{
-		{"status", "st", "查看 LanLink 运行状态"},
-		{"list", "ls", "列出所有已发现的节点"},
-		{"logs", "log", "查看日志（-f 实时跟踪，-n 指定行数）"},
-		{"ping", "", "测试与指定节点的连接"},
-		{"version", "v", "显示版本信息"},
-		{"help", "h, ?", "显示此帮助信息"},
-		{"clear", "cls", "清屏"},
-		{"exit", "quit, q", "退出交互模式"},
+		{"status", "st", "Show LanLink running status"},
+		{"list", "ls", "List all discovered nodes"},
+		{"logs", "log", "View logs (-f to follow, -n for lines)"},
+		{"ping", "", "Test connection to a node"},
+		{"version", "v", "Show version information"},
+		{"help", "h, ?", "Show this help message"},
+		{"clear", "cls", "Clear screen"},
+		{"exit", "quit, q", "Exit interactive mode"},
 	}
 
-	fmt.Println("🔍 查询命令:")
+	fmt.Println("Query Commands:")
 	for _, cmd := range commands[:5] {
 		if cmd.aliases != "" {
 			fmt.Printf("  %-12s %-12s %s\n", cmd.name, fmt.Sprintf("[%s]", cmd.aliases), cmd.desc)
@@ -197,37 +199,32 @@ func printInteractiveHelp() {
 		}
 	}
 
-	fmt.Println("\n🛠️  管理命令 (需要管理员权限，建议退出后执行):")
-	fmt.Println("  install                   安装到系统 PATH")
-	fmt.Println("  uninstall                 从系统 PATH 卸载")
-	fmt.Println("  service install           安装为系统服务（开机自启）")
-	fmt.Println("  service start             启动服务")
-	fmt.Println("  service stop              停止服务")
-	fmt.Println("  service status            查看服务状态")
+	fmt.Println("\nManagement Commands (require admin privileges, exit to run):")
+	fmt.Println("  install                   Install to system PATH")
+	fmt.Println("  uninstall                 Uninstall from system PATH")
+	fmt.Println("  service install           Install as system service (auto-start)")
+	fmt.Println("  service start             Start service")
+	fmt.Println("  service stop              Stop service")
+	fmt.Println("  service status            Check service status")
 
-	fmt.Println("\n💡 使用示例:")
-	fmt.Println("  lanlink> status           # 查看运行状态")
-	fmt.Println("  lanlink> list             # 列出所有节点")
-	fmt.Println("  lanlink> logs -f          # 实时查看日志")
-	fmt.Println("  lanlink> ping srv1.local  # 测试连接")
-	fmt.Println("  lanlink> clear            # 清屏")
-	fmt.Println("  lanlink> exit             # 退出")
+	fmt.Println("\nExamples:")
+	fmt.Println("  lanlink> status           # Check running status")
+	fmt.Println("  lanlink> list             # List all nodes")
+	fmt.Println("  lanlink> logs -f          # Follow logs in real-time")
+	fmt.Println("  lanlink> ping srv1.local  # Test connection")
+	fmt.Println("  lanlink> clear            # Clear screen")
+	fmt.Println("  lanlink> exit             # Exit")
 }
 
-// clearScreen 清屏
+// clearScreen clears the screen
 func clearScreen() {
-	if runtime.GOOS == "windows" {
-		// Windows 使用 cls
-		fmt.Print("\033[H\033[2J")
-	} else {
-		// Unix/Linux/Mac 使用 clear
-		fmt.Print("\033[H\033[2J")
-	}
+	// Just print some newlines instead of ANSI codes for better compatibility
+	fmt.Print("\n\n\n")
 }
 
-// printGoodbye 打印退出信息
+// printGoodbye prints goodbye message
 func printGoodbye() {
 	fmt.Println()
-	fmt.Print(color(ColorCyan+ColorBold, "👋 再见！感谢使用 LanLink\n"))
+	fmt.Println("Goodbye! Thanks for using LanLink")
 }
 
