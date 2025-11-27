@@ -28,6 +28,10 @@ func main() {
 		args := os.Args[2:]
 
 		switch command {
+		case "interactive", "i":
+			// 进入交互模式
+			cli.RunInteractive()
+			return
 		case "status":
 			if err := cli.ShowStatus(); err != nil {
 				os.Exit(1)
@@ -74,6 +78,10 @@ func main() {
 			cli.ShowHelp()
 			os.Exit(1)
 		}
+	} else {
+		// 没有参数时，默认进入交互模式
+		cli.RunInteractive()
+		return
 	}
 
 	// 默认：启动服务

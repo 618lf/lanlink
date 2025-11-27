@@ -61,7 +61,20 @@ sudo lanlink service start
 
 ### 第三步：验证运行
 
-打开另一个终端：
+打开另一个终端，使用交互模式（最简单）：
+
+```bash
+# 进入交互模式
+lanlink
+
+# 在交互模式中：
+lanlink> status       # 查看状态
+lanlink> list         # 列出节点
+lanlink> logs -f      # 实时查看日志
+lanlink> exit         # 退出
+```
+
+或使用命令行模式：
 
 ```bash
 # 查看状态
@@ -134,6 +147,7 @@ LanLink 已经在后台运行，会自动：
 ## 📚 进一步阅读
 
 - [完整 README](README.md)
+- [交互模式使用指南](docs/交互模式使用指南.md) ⭐ **推荐新手阅读**
 - [CLI 使用指南](docs/CLI使用指南.md)
 - [安装与服务管理](docs/安装与服务管理.md)
 - [执行逻辑详解](docs/执行逻辑详解.md)

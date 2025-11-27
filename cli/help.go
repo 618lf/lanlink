@@ -10,10 +10,13 @@ func ShowHelp() {
 %s
 
 用法:
-  lanlink [command] [options]
+  lanlink                      # 进入交互模式（推荐）⭐
+  lanlink interactive          # 进入交互模式
+  lanlink [command] [options]  # 执行单个命令
 
 命令:
-  start              启动服务（默认）
+  interactive, i     进入交互式命令行（可直接输入命令）
+  start              启动服务
   status             查看运行状态
   list, ls           列出所有节点
   logs               查看日志
@@ -30,7 +33,8 @@ func ShowHelp() {
   help, -h           显示帮助
 
 示例:
-  lanlink                      # 启动服务
+  lanlink                      # 进入交互模式 ⭐
+  lanlink i                    # 进入交互模式（简写）
   lanlink install              # 安装到系统PATH
   lanlink service install      # 安装为系统服务（开机自启）
   lanlink status               # 查看状态
@@ -41,4 +45,3 @@ func ShowHelp() {
 更多信息: https://github.com/618lf/lanlink
 `, color(ColorBold, "LanLink - 局域网域名自动映射工具"))
 }
-
