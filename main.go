@@ -64,6 +64,9 @@ func main() {
 				os.Exit(1)
 			}
 			return
+		case "service":
+			handleServiceCommand(args)
+			return
 		case "start":
 			// 继续执行服务启动
 		default:
@@ -300,4 +303,46 @@ func extractMACShort(deviceID string) string {
 		return mac[len(mac)-6:]
 	}
 	return mac
+}
+
+// handleServiceCommand 处理 service 子命令
+func handleServiceCommand(args []string) {
+	if len(args) == 0 {
+		fmt.Println("用法: lanlink service <command>")
+		fmt.Println("\n命令:")
+		fmt.Println("  install    - 安装为系统服务（开机自启）")
+		fmt.Println("  uninstall  - 卸载系统服务")
+		fmt.Println("  start      - 启动服务")
+		fmt.Println("  stop       - 停止服务")
+		fmt.Println("  status     - 查看服务状态")
+		fmt.Println("\n示例:")
+		fmt.Println("  lanlink service install    # 需要管理员/root权限")
+		fmt.Println("  lanlink service start")
+		fmt.Println("  lanlink service status")
+		os.Exit(1)
+	}
+
+	subcommand := args[0]
+	var err error
+
+	switch subcommand {
+	case "install":
+		err = cli.ServiceInstall()
+	case "uninstall":
+		err = cli.ServiceUninstall()
+	case "start":
+		err = cli.ServiceStart()
+	case "stop":
+		err = cli.ServiceStop()
+	case "status":
+		err = cli.ServiceStatus()
+	default:
+		fmt.Printf("未知的服务命令: %s\n", subcommand)
+		fmt.Println("使用 'lanlink service' 查看可用命令")
+		os.Exit(1)
+	}
+
+	if err != nil {
+		os.Exit(1)
+	}
 }
