@@ -151,7 +151,7 @@ func runService() {
 	nodeManager.AddOrUpdate(deviceID, domain, localIP, cfg.DeviceName)
 	nodeManager.SetLocal(deviceID)
 
-	// 设置节点变化回调（更新hosts文件）
+	// 设置节点变化回调（更新hosts文件并打印集群信息）
 	nodeManager.SetChangeCallback(func(n *node.Node, isOnline bool) {
 		if n.IsLocal {
 			return
@@ -159,6 +159,7 @@ func runService() {
 
 		if isOnline {
 			logger.Info("节点上线: %s (%s -> %s)", n.Hostname, n.Domain, n.IP)
+			// 上线时使用真实IP
 			if err := hostsManager.AddOrUpdate(n.IP, n.Domain); err != nil {
 				logger.Error("更新hosts失败: %v", err)
 			} else {
@@ -166,12 +167,16 @@ func runService() {
 			}
 		} else {
 			logger.Info("节点离线: %s (%s)", n.Hostname, n.Domain)
-			if err := hostsManager.Remove(n.Domain); err != nil {
-				logger.Error("删除hosts失败: %v", err)
+			// 离线时将IP设为127.0.0.1（保留域名映射）
+			if err := hostsManager.AddOrUpdate("127.0.0.1", n.Domain); err != nil {
+				logger.Error("更新hosts失败: %v", err)
 			} else {
-				logger.Info("已删除hosts: %s", n.Domain)
+				logger.Info("已更新hosts: %s -> 127.0.0.1 (离线)", n.Domain)
 			}
 		}
+
+		// 状态变化时立即打印集群信息
+		printClusterInfo(nodeManager)
 	})
 
 	// 设置消息接收回调
@@ -195,7 +200,8 @@ func runService() {
 			}
 
 		case network.ActionOffline:
-			nodeManager.Remove(msg.DeviceID)
+			// 标记节点离线（不删除，保留记录）
+			nodeManager.MarkOffline(msg.DeviceID)
 		}
 	})
 
@@ -327,18 +333,29 @@ func printClusterInfo(manager *node.Manager) {
 		return
 	}
 
+	// 统计在线数量
+	onlineCount := manager.GetOnlineCount()
+
 	fmt.Println()
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Printf("  集群节点列表 (%d 个节点)\n", len(nodes))
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Printf("  集群节点列表 (总计 %d 个, 在线 %d 个, 离线 %d 个)\n", 
+		len(nodes), onlineCount, len(nodes)-onlineCount)
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	for _, n := range nodes {
+		var status string
+
 		if n.IsLocal {
-			fmt.Printf("  %-30s -> %-15s (本机)\n", n.Domain, n.IP)
+			status = "本机"
+		} else if n.IsOnline {
+			status = "在线"
 		} else {
-			fmt.Printf("  %-30s -> %s\n", n.Domain, n.IP)
+			status = "离线"
 		}
+
+		// 始终显示真实 IP（hosts 文件中离线节点会映射到 127.0.0.1）
+		fmt.Printf("  %-30s -> %-15s [%s]\n", n.Domain, n.IP, status)
 	}
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
 }

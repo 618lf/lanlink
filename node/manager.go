@@ -9,18 +9,19 @@ import (
 type Node struct {
 	DeviceID  string    // 设备ID（MAC地址）
 	Domain    string    // 域名
-	IP        string    // IP地址
+	IP        string    // IP地址（真实IP）
 	Hostname  string    // 主机名
 	LastSeen  time.Time // 最后心跳时间
 	IsLocal   bool      // 是否是本机节点
+	IsOnline  bool      // 是否在线
 }
 
 // Manager 节点管理器
 type Manager struct {
-	mu            sync.RWMutex
-	nodes         map[string]*Node // key: deviceID
+	mu             sync.RWMutex
+	nodes          map[string]*Node // key: deviceID
 	offlineTimeout time.Duration
-	onNodeChange  func(*Node, bool) // 节点变化回调：(node, isOnline)
+	onNodeChange   func(*Node, bool) // 节点变化回调：(node, isOnline)
 }
 
 // NewManager 创建节点管理器
@@ -53,6 +54,7 @@ func (m *Manager) AddOrUpdate(deviceID, domain, ip, hostname string) bool {
 			Hostname: hostname,
 			LastSeen: now,
 			IsLocal:  false,
+			IsOnline: true,
 		}
 		m.nodes[deviceID] = node
 
@@ -62,6 +64,9 @@ func (m *Manager) AddOrUpdate(deviceID, domain, ip, hostname string) bool {
 		}
 		return true
 	}
+
+	// 检查是否从离线恢复上线
+	wasOffline := !node.IsOnline
 
 	// 更新现有节点
 	changed := false
@@ -78,16 +83,37 @@ func (m *Manager) AddOrUpdate(deviceID, domain, ip, hostname string) bool {
 		changed = true
 	}
 	node.LastSeen = now
+	node.IsOnline = true
 
-	// 如果IP或域名变化，触发回调
-	if changed && m.onNodeChange != nil {
+	// 如果IP或域名变化，或从离线恢复上线，触发回调
+	if (changed || wasOffline) && m.onNodeChange != nil {
 		m.onNodeChange(node, true)
 	}
 
-	return changed
+	return changed || wasOffline
 }
 
-// Remove 移除节点
+// MarkOffline 标记节点离线（不删除）
+func (m *Manager) MarkOffline(deviceID string) *Node {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	node, exists := m.nodes[deviceID]
+	if !exists || !node.IsOnline {
+		return nil
+	}
+
+	node.IsOnline = false
+
+	// 触发回调
+	if m.onNodeChange != nil {
+		m.onNodeChange(node, false)
+	}
+
+	return node
+}
+
+// Remove 移除节点（彻底删除）
 func (m *Manager) Remove(deviceID string) *Node {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -97,13 +123,13 @@ func (m *Manager) Remove(deviceID string) *Node {
 		return nil
 	}
 
-	delete(m.nodes, deviceID)
-
-	// 触发回调
-	if m.onNodeChange != nil {
+	// 如果节点还在线，先触发离线回调
+	if node.IsOnline && m.onNodeChange != nil {
+		node.IsOnline = false
 		m.onNodeChange(node, false)
 	}
 
+	delete(m.nodes, deviceID)
 	return node
 }
 
@@ -127,7 +153,21 @@ func (m *Manager) GetAll() []*Node {
 	return nodes
 }
 
-// CheckOffline 检查离线节点
+// GetOnlineCount 获取在线节点数量
+func (m *Manager) GetOnlineCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	count := 0
+	for _, node := range m.nodes {
+		if node.IsOnline {
+			count++
+		}
+	}
+	return count
+}
+
+// CheckOffline 检查离线节点（标记为离线而不是删除）
 func (m *Manager) CheckOffline() []*Node {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -135,16 +175,16 @@ func (m *Manager) CheckOffline() []*Node {
 	now := time.Now()
 	offlineNodes := make([]*Node, 0)
 
-	for deviceID, node := range m.nodes {
-		// 跳过本机节点
-		if node.IsLocal {
+	for _, node := range m.nodes {
+		// 跳过本机节点和已离线节点
+		if node.IsLocal || !node.IsOnline {
 			continue
 		}
 
 		// 检查是否超时
 		if now.Sub(node.LastSeen) > m.offlineTimeout {
+			node.IsOnline = false
 			offlineNodes = append(offlineNodes, node)
-			delete(m.nodes, deviceID)
 
 			// 触发回调
 			if m.onNodeChange != nil {
@@ -163,6 +203,6 @@ func (m *Manager) SetLocal(deviceID string) {
 
 	if node, exists := m.nodes[deviceID]; exists {
 		node.IsLocal = true
+		node.IsOnline = true
 	}
 }
-
