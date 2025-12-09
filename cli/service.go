@@ -82,12 +82,37 @@ func serviceInstallWindows() error {
 	}
 	exePath, _ = filepath.Abs(exePath)
 
+	// 复制到系统目录并添加到 PATH
+	Section("安装到系统")
+	installDir := `C:\Program Files\LanLink`
+	installPath := filepath.Join(installDir, "lanlink.exe")
+
+	// 创建目录
+	if err := os.MkdirAll(installDir, 0755); err != nil {
+		Error("创建目录失败: %v", err)
+		return err
+	}
+
+	// 复制文件
+	if err := copyFile(exePath, installPath); err != nil {
+		Error("复制文件失败: %v", err)
+		return err
+	}
+	Success("已安装到: %s", installPath)
+
+	// 添加到系统 PATH
+	if err := addToPath(installDir); err != nil {
+		Warn("添加到 PATH 失败: %v", err)
+	} else {
+		Success("已添加到系统 PATH")
+	}
+
 	Section("创建服务")
-	KeyValue("程序路径", exePath)
+	KeyValue("程序路径", installPath)
 
 	// 使用 sc 命令创建 Windows 服务
 	cmd := exec.Command("sc", "create", "LanLink",
-		"binPath=", fmt.Sprintf("\"%s\" start", exePath),
+		"binPath=", fmt.Sprintf("\"%s\"", installPath),
 		"start=", "auto",
 		"DisplayName=", "LanLink - 局域网域名自动映射")
 
@@ -109,9 +134,33 @@ func serviceInstallWindows() error {
 	fmt.Println()
 	Success("服务安装完成！")
 	fmt.Println("\n服务将在开机时自动启动")
+	fmt.Println("重启终端后可在任意目录使用 lanlink 命令")
 	fmt.Println()
 
 	return nil
+}
+
+// copyFile 复制文件
+func copyFile(src, dst string) error {
+	input, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, input, 0755)
+}
+
+// addToPath 添加到系统 PATH (Windows)
+func addToPath(dir string) error {
+	script := fmt.Sprintf(`
+$path = [Environment]::GetEnvironmentVariable("Path", "Machine")
+if ($path -notlike "*%s*") {
+    $newPath = $path + ";%s"
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
+}
+`, dir, dir)
+
+	cmd := exec.Command("powershell", "-Command", script)
+	return cmd.Run()
 }
 
 func serviceUninstallWindows() error {
@@ -138,18 +187,46 @@ func serviceUninstallWindows() error {
 	Section("删除服务")
 	cmd = exec.Command("sc", "delete", "LanLink")
 	if err := cmd.Run(); err != nil {
-		Error("删除服务失败: %v", err)
-		return err
+		Warn("删除服务失败（可能未安装）")
+	} else {
+		Success("服务已删除")
 	}
-	Success("服务已删除")
+
+	// 删除安装文件
+	Section("删除文件")
+	installDir := `C:\Program Files\LanLink`
+	if err := os.RemoveAll(installDir); err != nil {
+		Warn("删除安装目录失败: %v", err)
+	} else {
+		Success("已删除: %s", installDir)
+	}
+
+	// 从 PATH 移除
+	if err := removeFromPath(installDir); err != nil {
+		Warn("从 PATH 移除失败: %v", err)
+	} else {
+		Success("已从 PATH 移除")
+	}
 
 	Footer()
 
 	fmt.Println()
-	Success("服务卸载完成！")
+	Success("卸载完成！")
 	fmt.Println()
 
 	return nil
+}
+
+// removeFromPath 从系统 PATH 移除 (Windows)
+func removeFromPath(dir string) error {
+	script := fmt.Sprintf(`
+$path = [Environment]::GetEnvironmentVariable("Path", "Machine")
+$newPath = ($path.Split(';') | Where-Object { $_ -ne '%s' }) -join ';'
+[Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
+`, dir)
+
+	cmd := exec.Command("powershell", "-Command", script)
+	return cmd.Run()
 }
 
 func serviceStartWindows() error {
@@ -211,7 +288,7 @@ func serviceInstallUnix() error {
 	if os.Geteuid() != 0 {
 		Error("需要 root 权限")
 		fmt.Println("\n请使用 sudo 运行:")
-		fmt.Println("  sudo lanlink service install")
+		fmt.Println("  sudo lanlink -d")
 		return fmt.Errorf("需要 root 权限")
 	}
 	Success("已获取 root 权限")
@@ -224,8 +301,22 @@ func serviceInstallUnix() error {
 	}
 	exePath, _ = filepath.Abs(exePath)
 
+	// 复制到 /usr/local/bin
+	Section("安装到系统")
+	installPath := "/usr/local/bin/lanlink"
+
+	if err := copyFile(exePath, installPath); err != nil {
+		Error("复制文件失败: %v", err)
+		return err
+	}
+	if err := os.Chmod(installPath, 0755); err != nil {
+		Error("设置权限失败: %v", err)
+		return err
+	}
+	Success("已安装到: %s", installPath)
+
 	Section("创建服务文件")
-	KeyValue("程序路径", exePath)
+	KeyValue("程序路径", installPath)
 
 	// 创建 systemd 服务文件
 	serviceContent := fmt.Sprintf(`[Unit]
@@ -234,7 +325,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=%s start
+ExecStart=%s
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -242,7 +333,7 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
-`, exePath)
+`, installPath)
 
 	servicePath := "/etc/systemd/system/lanlink.service"
 	if err := os.WriteFile(servicePath, []byte(serviceContent), 0644); err != nil {
@@ -274,6 +365,7 @@ WantedBy=multi-user.target
 	fmt.Println()
 	Success("服务安装完成！")
 	fmt.Println("\n服务将在开机时自动启动")
+	fmt.Println("可在任意目录使用 lanlink 命令")
 	fmt.Println("\n查看日志:")
 	fmt.Println("  sudo journalctl -u lanlink -f")
 	fmt.Println()
@@ -289,7 +381,7 @@ func serviceUninstallUnix() error {
 	if os.Geteuid() != 0 {
 		Error("需要 root 权限")
 		fmt.Println("\n请使用 sudo 运行:")
-		fmt.Println("  sudo lanlink service uninstall")
+		fmt.Println("  sudo lanlink --uninstall")
 		return fmt.Errorf("需要 root 权限")
 	}
 	Success("已获取 root 权限")
@@ -325,10 +417,19 @@ func serviceUninstallUnix() error {
 	cmd = exec.Command("systemctl", "daemon-reload")
 	cmd.Run()
 
+	// 删除程序文件
+	Section("删除程序")
+	installPath := "/usr/local/bin/lanlink"
+	if err := os.Remove(installPath); err != nil {
+		Warn("删除程序失败: %v", err)
+	} else {
+		Success("已删除: %s", installPath)
+	}
+
 	Footer()
 
 	fmt.Println()
-	Success("服务卸载完成！")
+	Success("卸载完成！")
 	fmt.Println()
 
 	return nil
