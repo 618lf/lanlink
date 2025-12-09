@@ -327,23 +327,15 @@ func printClusterInfo(manager *node.Manager) {
 		return
 	}
 
-	// 统计在线节点（排除本机）
-	var onlineNodes []*node.Node
-	for _, n := range nodes {
-		if !n.IsLocal {
-			onlineNodes = append(onlineNodes, n)
-		}
-	}
-
 	fmt.Println()
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Printf("  集群节点列表 (%d 个在线)\n", len(onlineNodes))
+	fmt.Printf("  集群节点列表 (%d 个节点)\n", len(nodes))
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-	if len(onlineNodes) == 0 {
-		fmt.Println("  暂无其他节点加入")
-	} else {
-		for _, n := range onlineNodes {
+	for _, n := range nodes {
+		if n.IsLocal {
+			fmt.Printf("  %-30s -> %-15s (本机)\n", n.Domain, n.IP)
+		} else {
 			fmt.Printf("  %-30s -> %s\n", n.Domain, n.IP)
 		}
 	}
