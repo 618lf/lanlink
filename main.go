@@ -212,8 +212,10 @@ func runService() {
 	// 9. 启动定时任务
 	heartbeatTicker := time.NewTicker(time.Duration(cfg.HeartbeatIntervalSec) * time.Second)
 	offlineCheckTicker := time.NewTicker(5 * time.Second)
+	clusterInfoTicker := time.NewTicker(30 * time.Second)
 	defer heartbeatTicker.Stop()
 	defer offlineCheckTicker.Stop()
+	defer clusterInfoTicker.Stop()
 
 	// 10. 优雅退出处理
 	sigChan := make(chan os.Signal, 1)
@@ -235,6 +237,10 @@ func runService() {
 			if len(offlineNodes) > 0 {
 				logger.Debug("检查到 %d 个离线节点", len(offlineNodes))
 			}
+
+		case <-clusterInfoTicker.C:
+			// 每30秒打印集群节点信息
+			printClusterInfo(nodeManager)
 
 		case <-sigChan:
 			// 优雅退出
@@ -312,4 +318,35 @@ func extractMACShort(deviceID string) string {
 		return mac[len(mac)-6:]
 	}
 	return mac
+}
+
+// printClusterInfo 打印集群节点信息
+func printClusterInfo(manager *node.Manager) {
+	nodes := manager.GetAll()
+	if len(nodes) == 0 {
+		return
+	}
+
+	// 统计在线节点（排除本机）
+	var onlineNodes []*node.Node
+	for _, n := range nodes {
+		if !n.IsLocal {
+			onlineNodes = append(onlineNodes, n)
+		}
+	}
+
+	fmt.Println()
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Printf("  集群节点列表 (%d 个在线)\n", len(onlineNodes))
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	if len(onlineNodes) == 0 {
+		fmt.Println("  暂无其他节点加入")
+	} else {
+		for _, n := range onlineNodes {
+			fmt.Printf("  %-30s -> %s\n", n.Domain, n.IP)
+		}
+	}
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
 }
