@@ -3,11 +3,13 @@ package config
 import (
 	"encoding/json"
 	"os"
+
+	"github.com/618lf/lanlink/hardware"
 )
 
 // Config 应用配置
 type Config struct {
-	DeviceName           string `json:"deviceName"`           // 设备名，空则自动获取主机名
+	DeviceName           string `json:"deviceName"`           // 设备名，空则基于硬件ID自动生成
 	DomainSuffix         string `json:"domainSuffix"`         // 域名后缀
 	MulticastAddr        string `json:"multicastAddr"`        // 组播地址
 	MulticastPort        int    `json:"multicastPort"`        // 组播端口
@@ -18,10 +20,16 @@ type Config struct {
 
 // Default 默认配置
 func Default() *Config {
-	hostname, _ := os.Hostname()
+	// 使用硬件ID生成设备名，格式: {platform}-{序列号后6位}
+	deviceName, err := hardware.GenerateDeviceName()
+	if err != nil {
+		// 如果获取硬件ID失败，回退到主机名
+		deviceName, _ = os.Hostname()
+	}
+
 	return &Config{
-		DeviceName:           hostname,
-		DomainSuffix:         "local",
+		DeviceName:           deviceName,
+		DomainSuffix:         "coobee.local",
 		MulticastAddr:        "239.255.0.1",
 		MulticastPort:        9527,
 		HeartbeatIntervalSec: 10,
@@ -48,10 +56,14 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// 如果配置中deviceName为空，使用主机名
+	// 如果配置中deviceName为空，基于硬件ID自动生成
 	if cfg.DeviceName == "" {
-		hostname, _ := os.Hostname()
-		cfg.DeviceName = hostname
+		deviceName, err := hardware.GenerateDeviceName()
+		if err != nil {
+			// 如果获取硬件ID失败，回退到主机名
+			deviceName, _ = os.Hostname()
+		}
+		cfg.DeviceName = deviceName
 	}
 
 	return cfg, nil

@@ -281,6 +281,9 @@ func sendHeartbeat(client *network.MulticastClient, domain, ip, deviceID, hostna
 }
 
 // generateDomain 生成域名
+// 域名格式: {deviceName}.{suffix}
+// 其中 deviceName 默认为 {platform}-{硬件序列号后6位}
+// 最终域名示例: win-abc123.coobee.local, macos-xyz789.coobee.local
 func generateDomain(deviceName, suffix string) string {
 	// 将设备名转换为小写，替换空格为连字符
 	name := strings.ToLower(deviceName)

@@ -1,6 +1,6 @@
 {
   "deviceName": "",
-  "domainSuffix": "local",
+  "domainSuffix": "coobee.local",
   "multicastAddr": "239.255.0.1",
   "multicastPort": 9527,
   "heartbeatIntervalSec": 10,
