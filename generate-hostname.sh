@@ -54,8 +54,18 @@ get_serial_number() {
 # 生成主机标识（序列号后6位）
 generate_host_id() {
     local serial=$1
-    local host_id=$(echo "$serial" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g' | tail -c 7 | head -c 6)
+    # 转小写，移除非字母数字字符
+    local cleaned=$(echo "$serial" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
     
+    # 取后6位
+    local len=${#cleaned}
+    if [[ $len -gt 6 ]]; then
+        host_id="${cleaned: -6}"
+    else
+        host_id="$cleaned"
+    fi
+    
+    # 不足6位用0填充
     while [[ ${#host_id} -lt 6 ]]; do
         host_id="0${host_id}"
     done

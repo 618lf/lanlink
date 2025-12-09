@@ -13,50 +13,47 @@ setlocal enabledelayedexpansion
 set "DOMAIN_SUFFIX=coobee.local"
 set "SERIAL="
 
-REM 获取 BIOS 序列号
-for /f "skip=1 tokens=*" %%a in ('wmic bios get serialnumber 2^>nul') do (
-    if not defined SERIAL (
-        set "SERIAL=%%a"
-        set "SERIAL=!SERIAL: =!"
-    )
+REM 获取 BIOS 序列号（使用 /value 格式避免编码问题）
+for /f "tokens=2 delims==" %%a in ('wmic bios get serialnumber /value 2^>nul ^| find "="') do (
+    set "SERIAL=%%a"
 )
+REM 去除回车符
+set "SERIAL=!SERIAL: =!"
+for /f "delims=" %%a in ("!SERIAL!") do set "SERIAL=%%a"
 
-REM 如果 BIOS 序列号无效，尝试主板序列号
-if "!SERIAL!"=="" (
-    for /f "skip=1 tokens=*" %%a in ('wmic baseboard get serialnumber 2^>nul') do (
-        if not defined SERIAL (
-            set "SERIAL=%%a"
-            set "SERIAL=!SERIAL: =!"
-        )
-    )
+REM 检查是否为无效值
+if /i "!SERIAL!"=="To Be Filled By O.E.M." set "SERIAL="
+if /i "!SERIAL!"=="Default string" set "SERIAL="
+if /i "!SERIAL!"=="None" set "SERIAL="
+if "!SERIAL!"=="" goto :try_baseboard
+goto :process
+
+:try_baseboard
+REM 尝试主板序列号
+for /f "tokens=2 delims==" %%a in ('wmic baseboard get serialnumber /value 2^>nul ^| find "="') do (
+    set "SERIAL=%%a"
 )
+set "SERIAL=!SERIAL: =!"
+for /f "delims=" %%a in ("!SERIAL!") do set "SERIAL=%%a"
 
-REM 如果还是无效，使用 UUID
-if "!SERIAL!"=="" (
-    for /f "skip=1 tokens=*" %%a in ('wmic csproduct get uuid 2^>nul') do (
-        if not defined SERIAL (
-            set "SERIAL=%%a"
-            set "SERIAL=!SERIAL: =!"
-            set "SERIAL=!SERIAL:-=!"
-        )
-    )
+if /i "!SERIAL!"=="To Be Filled By O.E.M." set "SERIAL="
+if /i "!SERIAL!"=="Default string" set "SERIAL="
+if /i "!SERIAL!"=="None" set "SERIAL="
+if "!SERIAL!"=="" goto :try_uuid
+goto :process
+
+:try_uuid
+REM 使用 UUID
+for /f "tokens=2 delims==" %%a in ('wmic csproduct get uuid /value 2^>nul ^| find "="') do (
+    set "SERIAL=%%a"
 )
+set "SERIAL=!SERIAL: =!"
+set "SERIAL=!SERIAL:-=!"
+for /f "delims=" %%a in ("!SERIAL!") do set "SERIAL=%%a"
 
-REM 移除特殊字符，只保留字母数字
-set "CLEAN="
-set "CHARS=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-for /l %%i in (0,1,99) do (
-    set "CHAR=!SERIAL:~%%i,1!"
-    if "!CHAR!"=="" goto :done_clean
-    echo !CHARS! | findstr /c:"!CHAR!" >nul 2>&1 && set "CLEAN=!CLEAN!!CHAR!"
-)
-:done_clean
-
+:process
 REM 转小写
-set "LOWER="
-for %%c in (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9) do (
-    set "CLEAN=!CLEAN:%%c=%%c!"
-)
+set "CLEAN=!SERIAL!"
 set "CLEAN=!CLEAN:A=a!"
 set "CLEAN=!CLEAN:B=b!"
 set "CLEAN=!CLEAN:C=c!"
@@ -84,28 +81,13 @@ set "CLEAN=!CLEAN:X=x!"
 set "CLEAN=!CLEAN:Y=y!"
 set "CLEAN=!CLEAN:Z=z!"
 
-REM 取后6位
-set "LEN=0"
-for /l %%i in (0,1,99) do (
-    set "CHAR=!CLEAN:~%%i,1!"
-    if not "!CHAR!"=="" set /a "LEN=%%i+1"
-)
+REM 取后6位（使用负数索引）
+set "HOSTID=!CLEAN:~-6!"
 
-if !LEN! gtr 6 (
-    set /a "START=!LEN!-6"
-    set "HOSTID=!CLEAN:~%START%,6!"
-) else (
-    set "HOSTID=!CLEAN!"
-)
-
-REM 不足6位用0填充
+REM 如果为空或不足6位，用0填充
+if "!HOSTID!"=="" set "HOSTID=000000"
 :pad_loop
-set "PADLEN=0"
-for /l %%i in (0,1,5) do (
-    set "CHAR=!HOSTID:~%%i,1!"
-    if not "!CHAR!"=="" set /a "PADLEN=%%i+1"
-)
-if !PADLEN! lss 6 (
+if "!HOSTID:~5,1!"=="" (
     set "HOSTID=0!HOSTID!"
     goto :pad_loop
 )
@@ -113,4 +95,3 @@ if !PADLEN! lss 6 (
 echo win-!HOSTID!.%DOMAIN_SUFFIX%
 
 endlocal
-

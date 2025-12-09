@@ -2,9 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/618lf/lanlink/config"
+	"github.com/618lf/lanlink/hardware"
 	"github.com/618lf/lanlink/internal"
 )
 
@@ -12,7 +14,32 @@ import (
 func ShowStatus() error {
 	Header("LanLink 状态概览")
 
-	// 1. 运行状态
+	// 1. 本机域名信息（始终显示）
+	Section("本机域名")
+	cfg, cfgErr := config.Load("config.json")
+	if cfgErr == nil {
+		// 生成完整域名
+		deviceName := strings.ToLower(cfg.DeviceName)
+		deviceName = strings.ReplaceAll(deviceName, " ", "-")
+		fullDomain := fmt.Sprintf("%s.%s", deviceName, cfg.DomainSuffix)
+		
+		Success("域名: %s", fullDomain)
+		KeyValue("设备名", cfg.DeviceName)
+		KeyValue("域名后缀", cfg.DomainSuffix)
+		
+		// 显示硬件信息
+		platform := hardware.GetPlatform()
+		serial, err := hardware.GetSerialNumber()
+		if err == nil {
+			hostID := hardware.GenerateHostID(serial)
+			KeyValue("平台", platform)
+			KeyValue("硬件ID", hostID)
+		}
+	} else {
+		Warn("无法加载配置: %v", cfgErr)
+	}
+
+	// 2. 运行状态
 	Section("运行状态")
 	info, err := internal.GetRuntimeInfo()
 	if err != nil {
@@ -48,12 +75,9 @@ func ShowStatus() error {
 		}
 	}
 
-	// 3. 配置信息
-	Section("配置信息")
-	cfg, err := config.Load("config.json")
-	if err == nil {
-		KeyValue("设备名", cfg.DeviceName)
-		KeyValue("域名后缀", cfg.DomainSuffix)
+	// 3. 网络配置
+	Section("网络配置")
+	if cfgErr == nil {
 		KeyValue("组播地址", fmt.Sprintf("%s:%d", cfg.MulticastAddr, cfg.MulticastPort))
 		KeyValue("心跳间隔", fmt.Sprintf("%d 秒", cfg.HeartbeatIntervalSec))
 		KeyValue("离线超时", fmt.Sprintf("%d 秒", cfg.OfflineTimeoutSec))

@@ -8,6 +8,18 @@ import (
 	"runtime"
 )
 
+// isAdmin 检查是否有管理员权限
+func isAdmin() bool {
+	if runtime.GOOS != "windows" {
+		return os.Geteuid() == 0
+	}
+
+	// Windows: 尝试执行需要管理员权限的操作
+	cmd := exec.Command("net", "session")
+	err := cmd.Run()
+	return err == nil
+}
+
 // ServiceInstall 安装为系统服务（开机自启）
 func ServiceInstall() error {
 	if runtime.GOOS == "windows" {
@@ -96,9 +108,6 @@ func serviceInstallWindows() error {
 
 	fmt.Println()
 	Success("服务安装完成！")
-	fmt.Println("\n启动服务:")
-	fmt.Println("  lanlink service start")
-	fmt.Println("  或: sc start LanLink")
 	fmt.Println("\n服务将在开机时自动启动")
 	fmt.Println()
 
@@ -155,7 +164,7 @@ func serviceStartWindows() error {
 	}
 
 	Success("服务已启动")
-	fmt.Println("\n查看状态: lanlink service status")
+	fmt.Println("\n查看状态: lanlink --status")
 	return nil
 }
 
@@ -182,7 +191,7 @@ func serviceStatusWindows() error {
 
 	if err != nil {
 		Warn("服务未安装")
-		fmt.Println("\n安装服务: lanlink service install")
+		fmt.Println("\n安装服务: lanlink --daemon")
 		return nil
 	}
 
@@ -264,12 +273,9 @@ WantedBy=multi-user.target
 
 	fmt.Println()
 	Success("服务安装完成！")
-	fmt.Println("\n启动服务:")
-	fmt.Println("  lanlink service start")
-	fmt.Println("  或: sudo systemctl start lanlink")
+	fmt.Println("\n服务将在开机时自动启动")
 	fmt.Println("\n查看日志:")
 	fmt.Println("  sudo journalctl -u lanlink -f")
-	fmt.Println("\n服务将在开机时自动启动")
 	fmt.Println()
 
 	return nil
@@ -341,7 +347,7 @@ func serviceStartUnix() error {
 	}
 
 	Success("服务已启动")
-	fmt.Println("\n查看状态: lanlink service status")
+	fmt.Println("\n查看状态: lanlink --status")
 	fmt.Println("查看日志: sudo journalctl -u lanlink -f")
 	return nil
 }
@@ -373,7 +379,7 @@ func serviceStatusUnix() error {
 		fmt.Println(string(output))
 		if len(output) == 0 {
 			Warn("服务未安装")
-			fmt.Println("\n安装服务: sudo lanlink service install")
+			fmt.Println("\n安装服务: sudo lanlink --daemon")
 		}
 	} else {
 		fmt.Println(string(output))

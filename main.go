@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -22,70 +23,64 @@ const (
 )
 
 func main() {
-	// 命令行路由
-	if len(os.Args) >= 2 {
-		command := os.Args[1]
-		args := os.Args[2:]
+	// 定义命令行参数
+	daemon := flag.Bool("daemon", false, "安装为系统服务并启动（开机自启）")
+	status := flag.Bool("status", false, "查看运行状态")
+	stop := flag.Bool("stop", false, "停止服务")
+	uninstall := flag.Bool("uninstall", false, "卸载系统服务")
+	version := flag.Bool("version", false, "显示版本信息")
+	help := flag.Bool("help", false, "显示帮助信息")
 
-		switch command {
-		case "interactive", "i":
-			// 进入交互模式
-			cli.RunInteractive()
-			return
-		case "status":
-			if err := cli.ShowStatus(); err != nil {
-				os.Exit(1)
-			}
-			return
-		case "list", "ls":
-			if err := cli.ListNodes(args); err != nil {
-				os.Exit(1)
-			}
-			return
-		case "logs":
-			if err := cli.ShowLogs(args); err != nil {
-				os.Exit(1)
-			}
-			return
-		case "ping":
-			if err := cli.PingNode(args); err != nil {
-				os.Exit(1)
-			}
-			return
-		case "version", "-v", "--version":
-			cli.ShowVersion()
-			return
-		case "help", "-h", "--help":
-			cli.ShowHelp()
-			return
-		case "install":
-			if err := cli.Install(); err != nil {
-				os.Exit(1)
-			}
-			return
-		case "uninstall":
-			if err := cli.Uninstall(); err != nil {
-				os.Exit(1)
-			}
-			return
-		case "service":
-			handleServiceCommand(args)
-			return
-		case "start":
-			// 继续执行服务启动
-		default:
-			fmt.Printf("未知命令: %s\n", command)
-			cli.ShowHelp()
+	// 简写形式
+	flag.BoolVar(daemon, "d", false, "安装为系统服务并启动（开机自启）")
+	flag.BoolVar(status, "s", false, "查看运行状态")
+	flag.BoolVar(version, "v", false, "显示版本信息")
+	flag.BoolVar(help, "h", false, "显示帮助信息")
+
+	// 自定义 Usage
+	flag.Usage = cli.ShowHelp
+
+	// 解析参数
+	flag.Parse()
+
+	// 处理命令
+	switch {
+	case *help:
+		cli.ShowHelp()
+
+	case *version:
+		cli.ShowVersion()
+
+	case *status:
+		if err := cli.ShowStatus(); err != nil {
 			os.Exit(1)
 		}
-	} else {
-		// 没有参数时，默认进入交互模式
-		cli.RunInteractive()
-		return
-	}
 
-	// 默认：启动服务
-	runService()
+	case *daemon:
+		// 安装为系统服务并启动
+		fmt.Println("正在安装 LanLink 为系统服务...")
+		if err := cli.ServiceInstall(); err != nil {
+			os.Exit(1)
+		}
+		fmt.Println("\n正在启动服务...")
+		if err := cli.ServiceStart(); err != nil {
+			os.Exit(1)
+		}
+
+	case *stop:
+		if err := cli.ServiceStop(); err != nil {
+			os.Exit(1)
+		}
+
+	case *uninstall:
+		if err := cli.ServiceUninstall(); err != nil {
+			os.Exit(1)
+		}
+
+	default:
+		// 默认：启动服务（前台运行）
+		runService()
+	}
 }
 
 func runService() {
@@ -145,6 +140,9 @@ func runService() {
 	domain := generateDomain(cfg.DeviceName, cfg.DomainSuffix)
 
 	logger.Info("本机信息: DeviceID=%s, IP=%s, Domain=%s", deviceID, localIP, domain)
+	fmt.Printf("本机域名: %s\n", domain)
+	fmt.Printf("本机 IP: %s\n", localIP)
+	fmt.Println()
 
 	// 6. 创建节点管理器
 	nodeManager := node.NewManager(time.Duration(cfg.OfflineTimeoutSec) * time.Second)
@@ -314,46 +312,4 @@ func extractMACShort(deviceID string) string {
 		return mac[len(mac)-6:]
 	}
 	return mac
-}
-
-// handleServiceCommand 处理 service 子命令
-func handleServiceCommand(args []string) {
-	if len(args) == 0 {
-		fmt.Println("用法: lanlink service <command>")
-		fmt.Println("\n命令:")
-		fmt.Println("  install    - 安装为系统服务（开机自启）")
-		fmt.Println("  uninstall  - 卸载系统服务")
-		fmt.Println("  start      - 启动服务")
-		fmt.Println("  stop       - 停止服务")
-		fmt.Println("  status     - 查看服务状态")
-		fmt.Println("\n示例:")
-		fmt.Println("  lanlink service install    # 需要管理员/root权限")
-		fmt.Println("  lanlink service start")
-		fmt.Println("  lanlink service status")
-		os.Exit(1)
-	}
-
-	subcommand := args[0]
-	var err error
-
-	switch subcommand {
-	case "install":
-		err = cli.ServiceInstall()
-	case "uninstall":
-		err = cli.ServiceUninstall()
-	case "start":
-		err = cli.ServiceStart()
-	case "stop":
-		err = cli.ServiceStop()
-	case "status":
-		err = cli.ServiceStatus()
-	default:
-		fmt.Printf("未知的服务命令: %s\n", subcommand)
-		fmt.Println("使用 'lanlink service' 查看可用命令")
-		os.Exit(1)
-	}
-
-	if err != nil {
-		os.Exit(1)
-	}
 }
